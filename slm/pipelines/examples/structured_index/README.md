@@ -25,6 +25,11 @@ pip install -r requirements.txt
 ### 数据准备
 
 - 源文档：需要构建层次化索引的文档语料，如路径`data/source`下的文档示例。每篇文档为单个文件，目前支持 PDF 或 HTML 格式。
+我们提供了一个脚本`data/source/download.sh`用于下载示例文档
+```bash
+cd data/source
+bash download.sh
+```
 - 查询文件：用户查询文本，目前支持 json 格式，单条查询为`query_id: query_text`，如查询文件示例`data/query.json`。
 
 
@@ -35,7 +40,7 @@ pip install -r requirements.txt
 为单个文档文件构建层次化索引：
 ```bash
 python construct_index.py \
---source data/source/BigCodeBench.pdf \
+--source data/source/2308.12950.pdf \
 --parse_model_name_or_path Qwen/Qwen2-72B-Instruct \
 --summarize_model_name_or_path Qwen/Qwen2-72B-Instruct \
 --encode_model_name_or_path BAAI/bge-large-en-v1.5 \
@@ -123,35 +128,35 @@ python query.py \
                 "corpus_id": 122,
                 "score": 0.7032119035720825,
                 "content": "CoDE LLAMA is a family of large language models for code, based on LLAMA 2, designed for state-of-the-art performance in programming tasks, including infilling, large context handling, and zero-shot instruction-following, with a focus on safety and alignment.",
-                "source": "data/source/CodeLlama.pdf",
+                "source": "data/source/2308.12950.pdf",
                 "level": 0
             },
             {
                 "corpus_id": 127,
                 "score": 0.6490256786346436,
                 "content": "CoDE LLAMA models are general-purpose code generation tools, with specialized versions like CoDE LLAMA -PyTHON for Python code and CoDE LLAMA -INsTRUCT for understanding and executing instructions.",
-                "source": "data/source/CodeLlama.pdf",
+                "source": "data/source/2308.12950.pdf",
                 "level": 3
             },
             {
                 "corpus_id": 128,
                 "score": 0.6398724317550659,
                 "content": "CoDE LLAMA -PyTHON is specialized for Python code generation, while CoDE LLAMA -INsTRUCT models are designed to understand and execute instructions.",
-                "source": "data/source/CodeLlama.pdf",
+                "source": "data/source/2308.12950.pdf",
                 "level": 4
             },
             {
                 "corpus_id": 161,
                 "score": 0.6116989254951477,
                 "content": "CoDE LLAMA models are designed for real-world applications, excelling in infilling and large context handling, and they achieve state-of-the-art performance on code generation benchmarks while ensuring safety and alignment.",
-                "source": "data/source/CodeLlama.pdf",
+                "source": "data/source/2308.12950.pdf",
                 "level": 2
             },
             {
                 "corpus_id": 129,
                 "score": 0.6056838631629944,
                 "content": "CoDE LLAMA -INsTRUCT are instruction-following models designed to understand and execute instructions.",
-                "source": "data/source/CodeLlama.pdf",
+                "source": "data/source/2308.12950.pdf",
                 "level": 5
             }
         ]
