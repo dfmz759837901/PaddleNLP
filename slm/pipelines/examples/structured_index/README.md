@@ -25,7 +25,7 @@ pip install -r requirements.txt
 ### 数据准备
 
 - 源文档：需要构建层次化索引的文档语料，如路径`data/source`下的文档示例。每篇文档为单个文件，目前支持 PDF 或 HTML 格式。
-脚本`data/source/download.sh`可用于用于下载示例文档：
+脚本`data/source/download.sh`可用于下载示例文档：
 ```bash
 cd data/source
 bash download.sh
