@@ -1,0 +1,29 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # 每 5 分钟触发一次
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout forked repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 获取完整的提交历史
+
+      - name: Fetch upstream repo
+        run: |
+          git remote add upstream https://github.com/PaddlePaddle/PaddleNLP.git
+          git fetch upstream
+
+      - name: Merge upstream changes
+        run: |
+          git merge upstream/develop --no-edit
+
+      - name: Push changes to forked repo
+        run: |
+          git push origin develop
