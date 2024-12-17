@@ -266,6 +266,7 @@ class TrainingArguments:
               sync_param, in optimizer step, use broadcast to sync parameters those attr 'is_distributed' is False.
               sync_grad, in optimizer step, use broadcast to sync gradients those attr 'is_distributed' is False.
               sync_moment, in optimizer step, use broadcast to sync momentums those attr 'is_distributed' is False.
+              replace_with_parallel_cross_entropy, it replaces 'cross_entropy_with_softmax' OP with 'c_softmax_with_cross_entropy' OP in PIR static graph, which can improve model parallel performance.
         pipeline_parallel_config (`str`, *optional*)(
             Some additional config it highly affect the useage of pipeline parallel, we provide some option to config it.
             following config is support:
@@ -378,6 +379,8 @@ class TrainingArguments:
             Whether to use distributed dataloader. Default is `False`.
         release_grads (`bool`, *optional*):
             Whether to release gradients during training. Default is `False`.
+        ckpt_quant_stage (`str`, *optional*):
+            Whether activate checkpoint quantization. O0: deactivate, O1: Int8 compression, O2: Int4 compression. (default: O0).
     """
 
     output_dir: str = field(
@@ -679,6 +682,7 @@ class TrainingArguments:
                 "sync_param, in optimizer step, use broadcast to sync parameters those attr 'is_distributed' is False.\n"
                 "sync_grad, in optimizer step, use broadcast to sync gradients those attr 'is_distributed' is False.\n"
                 "sync_moment, in optimizer step, use broadcast to sync momentums those attr 'is_distributed' is False.\n"
+                "replace_with_parallel_cross_entropy, it replaces 'cross_entropy_with_softmax' OP with 'c_softmax_with_cross_entropy' OP in PIR static graph, which can improve model parallel performance.\n"
             )
         },
     )
@@ -878,7 +882,9 @@ class TrainingArguments:
     )
     ckpt_quant_stage: str = field(
         default="O0",
-        metadata={"help": "checkpoint quantization stage."},
+        metadata={
+            "help": "checkpoint quantization stage. O0: deactivate, O1: Int8 compression, O2: Int4 compression. (default: O0)"
+        },
     )
     ignore_load_lr_and_optim: Optional[bool] = field(
         default=False,
@@ -1014,6 +1020,8 @@ class TrainingArguments:
             raise ValueError("At most one of fp16 and bf16 can be True for full eval, but not both")
 
         self.optim = OptimizerNames(self.optim)
+        if self.optim == OptimizerNames.ADAMW_MINI and self.tensor_parallel_degree > 1:
+            raise ValueError("AdamW Mini currently doesn't support tensor parallelism.")
 
         self.use_hybrid_parallel = False
 
@@ -1561,6 +1569,7 @@ class TrainingArguments:
                             "enable_delay_scale_loss",
                             # "enable_mp_skip_c_identity",
                             # "enable_mp_fused_linear_param_grad_add",
+                            "replace_with_parallel_cross_entropy",
                         ]:
                             raise ValueError(
                                 f"Found unknown tensor parallell config {x}, "
