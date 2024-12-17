@@ -14,8 +14,7 @@
 推荐安装 gpu 版本的[PaddlePaddle](https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/install/conda/linux-conda.html)，以 cuda11.7的 paddle 为例，安装命令如下：
 
 ```bash
-conda install nccl -c conda-forge
-conda install paddlepaddle-gpu==2.6.1 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge
+conda install paddlepaddle-gpu==2.6.2 cudatoolkit=11.7 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge
 ```
 安装其他依赖：
 ```bash
@@ -27,6 +26,7 @@ pip install -r requirements.txt
 - 源文档：需要构建层次化索引的文档语料，如路径`data/source`下的文档示例。每篇文档为单个文件，目前支持 PDF 或 HTML 格式。
 脚本`data/source/download.sh`可用于下载示例文档：
 ```bash
+apt install jq -y # 安装 jq 工具, 需要系统权限，若已安装可跳过
 cd data/source
 bash download.sh
 ```
