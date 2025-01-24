@@ -434,11 +434,6 @@ class Trainer:
                     "We do not support skip_save_model_weight in peft model when using unified checkpoint, remove this config."
                 )
 
-        if args.sequence_parallel:
-            register_sequence_parallel_allreduce_hooks(
-                self.model, args.gradient_accumulation_steps, args.fuse_sequence_parallel_allreduce
-            )
-
         self.do_grad_scaling = False
         self.enable_autocast_context_manager = False
         if args.fp16 or args.bf16:
@@ -2054,6 +2049,11 @@ class Trainer:
             else:
                 model, self.optimizer = decorated
 
+        if self.args.tensor_parallel_degree > 1 and self.args.sequence_parallel:
+            register_sequence_parallel_allreduce_hooks(
+                model, self.args.gradient_accumulation_steps, self.args.fuse_sequence_parallel_allreduce
+            )
+
         if self.args.world_size == 1:
             if self.args.amp_master_grad:
                 mix_precision_utils.MixPrecisionLayer(model, dtype=self.amp_dtype)
@@ -3123,6 +3123,9 @@ class Trainer:
             if self.model is self.model_wrapped and isinstance(self.model_wrapped, PipelineLayer):
                 # NOTE(gongenlei): when do_train=False, do_eval=True, we need to wrap model for pipeline
                 self.model_wrapped = fleet.distributed_model(self.model_wrapped)
+            if isinstance(self.model_wrapped, LoRAModel) and isinstance(self.model_wrapped.model, PipelineLayer):
+                # NOTE(liuting): when do_train=False, do_eval=True, lora=True, we need to wrap model for pipeline
+                self.model_wrapped = fleet.distributed_model(self.model_wrapped.model)
             model = self.model_wrapped
         else:
             model = self.model
