@@ -52,14 +52,21 @@ from paddlenlp.transformers import (
     AutoModelForCausalLM,
     AutoModelForCausalLMPipe,
     AutoTokenizer,
+    DeepseekV2ForCausalLM,
+    DeepseekV2ForCausalLMPipe,
+    DeepseekV3ForCausalLM,
+    DeepseekV3ForCausalLMPipe,
     Llama3Tokenizer,
     LlamaForCausalLM,
     LlamaForCausalLMPipe,
     LlamaTokenizer,
     Qwen2ForCausalLM,
     Qwen2ForCausalLMPipe,
+    Qwen2MoeForCausalLM,
+    Qwen2MoeForCausalLMPipe,
 )
 from paddlenlp.transformers.configuration_utils import LlmMetaConfig
+from paddlenlp.transformers.longlora import replace_llama_attn, set_group_size
 from paddlenlp.trl import DataConfig, ModelConfig, SFTConfig, SFTTrainer
 from paddlenlp.trl.llm_utils import (
     ZeroPaddingIterDatasetCallback,
@@ -74,7 +81,18 @@ from paddlenlp.utils.tools import get_env_device
 # Fine-tune Environment Variables to support sharding stage1 overlap optimization.
 os.environ["USE_CASUAL_MASK"] = "False"
 
-flash_mask_support_list = [LlamaForCausalLM, LlamaForCausalLMPipe, Qwen2ForCausalLM, Qwen2ForCausalLMPipe]
+flash_mask_support_list = [
+    DeepseekV2ForCausalLM,
+    DeepseekV2ForCausalLMPipe,
+    DeepseekV3ForCausalLM,
+    DeepseekV3ForCausalLMPipe,
+    LlamaForCausalLM,
+    LlamaForCausalLMPipe,
+    Qwen2ForCausalLM,
+    Qwen2ForCausalLMPipe,
+    Qwen2MoeForCausalLM,
+    Qwen2MoeForCausalLMPipe,
+]
 
 
 def paddlenlp_verison_check():
@@ -151,7 +169,18 @@ def main():
         quantization_config=quantization_config,
     )
 
-    if "Qwen2Moe" in str(model_config.architectures) and training_args.data_parallel_degree > 1:
+    if training_args.use_ssa:
+        assert (
+            training_args.ssa_group_size_ratio is not None
+        ), "ssa_group_size_ratio must be specified when use_ssa is True"
+        set_group_size(training_args.ssa_group_size_ratio)
+        replace_llama_attn()
+
+    architectures_to_check = {"Qwen2Moe", "DeepseekV2", "DeepseekV3"}
+    if (
+        any(architecture in str(model_config.architectures) for architecture in architectures_to_check)
+        and training_args.data_parallel_degree > 1
+    ):
         training_args.use_expert_parallel = True
 
     LlmMetaConfig.set_llm_config(model_config, training_args)
@@ -174,6 +203,11 @@ def main():
 
     # Config for model useing long sequence strategy
     if model_args.use_long_sequence_strategies:
+        scaled_max_length = (
+            int(data_args.max_length * model_args.rope_scaling_factor)
+            if data_args.use_pose_convert
+            else data_args.max_length
+        )
         data_args.scaled_max_length = int(data_args.max_length * model_args.rope_scaling_factor)
         model_config.use_long_sequence_strategies = True
         model_config.long_sequence_strategy_type = model_args.strategy_type
@@ -181,7 +215,7 @@ def main():
         model_config.rope_scaling_factor = model_args.rope_scaling_factor
         model_config.long_sequence_init_args = {
             "dim": int(model_config.hidden_size / model_config.num_attention_heads),
-            "max_position_embeddings": data_args.scaled_max_length,  # extended context window
+            "max_position_embeddings": scaled_max_length,  # extended context window
             "base": model_config.rope_theta,
             "scaling_factor": model_args.rope_scaling_factor,
         }
@@ -189,6 +223,8 @@ def main():
             model_config.long_sequence_init_args["original_max_position_embeddings"] = data_args.max_length
 
     logger.info(f"Final model config: {model_config}")
+
+    logger.info("Creating model")
 
     model_class = AutoModelForCausalLM
     if training_args.pipeline_parallel_degree > 1:
@@ -257,7 +293,6 @@ def main():
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     train_ds, dev_ds, test_ds = create_dataset(data_args, training_args)
-
     # TODO(ZHUI & sijunhe): Temporary implementation. Generalize this logic and move to Trainer later.
     if training_args.resume_from_checkpoint is not None and data_args.lazy:
         logger.info(
@@ -301,6 +336,7 @@ def main():
         )
         eval_zero_padding = False
 
+    logger.info("Trans the dataset text into token ids, please wait for a moment.")
     train_ds, dev_ds, test_ds = trans_dataset_to_ids(
         train_ds, dev_ds, test_ds, model_args, data_args, trans_func, eval_zero_padding
     )
@@ -585,7 +621,12 @@ def create_peft_model(model_args, reft_args, training_args, dtype, model_config,
 def trans_dataset_to_ids(train_ds, dev_ds, test_ds, model_args, data_args, trans_func, eval_zero_padding):
     if train_ds is not None:
         train_ds = train_ds.map(
-            partial(trans_func, is_test=False, zero_padding=data_args.zero_padding, flash_mask=model_args.flash_mask)
+            partial(
+                trans_func,
+                is_test=False,
+                zero_padding=data_args.zero_padding,
+                flash_mask=model_args.flash_mask,
+            )
         )
     if dev_ds is not None:
         dev_ds = dev_ds.map(
@@ -612,18 +653,21 @@ def create_dataset(data_args, training_args):
     if os.path.exists(os.path.join(data_args.dataset_name_or_path, "train.json")) or os.path.exists(
         os.path.join(data_args.dataset_name_or_path, "dev.json")
     ):
+        logger.info("load train")
         if training_args.do_train:
             train_ds = load_dataset(
                 "json",
                 data_files=os.path.join(data_args.dataset_name_or_path, "train.json"),
                 lazy=data_args.lazy,
             )[0]
+        logger.info("load eval")
         if training_args.do_eval:
             dev_ds = load_dataset(
                 "json",
                 data_files=os.path.join(data_args.dataset_name_or_path, "dev.json"),
                 lazy=data_args.lazy,
             )[0]
+        logger.info("load test")
         if training_args.do_predict:
             test_ds = load_dataset(
                 "json",
