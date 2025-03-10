@@ -1,12 +1,10 @@
 # 向量检索模型训练
 
-## 安装
-
-推荐安装 gpu 版本的[PaddlePaddle](https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/install/conda/linux-conda.html)，以 cuda11.7的 paddle 为例，安装命令如下：
+推荐安装 gpu 版本的[PaddlePaddle](https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/install/conda/linux-conda.html)，以 cuda12.3的 paddle 为例，安装命令如下：
 
 ```
 conda install nccl -c conda-forge
-conda install paddlepaddle-gpu==2.6.1 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge
+conda install paddlepaddle-gpu==3.0.0rc1 -i https://www.paddlepaddle.org.cn/packages/stable/cu123/ -c conda-forge
 ```
 安装其他依赖：
 ```
@@ -62,7 +60,7 @@ python -m paddle.distributed.launch --gpus "0,1,2,3" train.py --do_train \
 
 当模型架构为 decoder-only 时，以[RepLLaMA](https://huggingface.co/castorini/repllama-v1-7b-lora-passage) 和 [NV-Embed-v1](https://huggingface.co/nvidia/NV-Embed-v1) 为例，采用多卡训练：
 ```
-model_name=castorini/repllama-v1-7b-lora-passage 或 NV-Embed-v1
+model_name=castorini/repllama-v1-7b-lora-passage 或 nvidia/NV-Embed-v1
 output_dir=repllama-v1-7b-duretrieval 或 NV-Embed-v1-duretrieval
 
 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" train.py --do_train \
@@ -126,7 +124,7 @@ python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" train.py --do_tr
 在 T2Ranking 上评估，对 RocketQA 的测试代码示例如下：
 ```
 export CUDA_VISIBLE_DEVICES=0
-model_path=rocketqa-zh-base-query-encoder-duretrieval   
+model_path=rocketqa-zh-base-query-encoder-duretrieval
 python evaluation/benchmarks.py --model_type bert \
     --query_model ${model_path} \
     --passage_model ${model_path} \
@@ -186,11 +184,63 @@ python -u evaluation/eval_mteb.py \
 是一个大规模文本嵌入评测基准，包含了丰富的向量检索评估任务和数据集。
 本仓库主要面向其中的中英文检索任务（Retrieval），并以 SciFact 数据集作为主要示例。
 
+评估 LLARA 向量检索模型 ([LLARA-passage](https://huggingface.co/BAAI/LLARA-passage)):
+
+评估其在 SciFact 数据集上的性能:
+```
+export CUDA_VISIBLE_DEVICES=0
+python evaluation/eval_mteb.py \
+       --base_model_name_or_path BAAI/LLARA-passage \
+       --output_folder en_results/llara-passage \
+       --task_name 'SciFact' \
+       --eval_batch_size 8 \
+       --pooling_method last_8 \
+       --model_flag llara \
+       --add_bos_token 1 \
+       --add_eos_token 0 \
+       --max_seq_length 532
+```
+结果文件保存在`en_results/llara-passage/SciFact/last_8/no_model_name_available/no_revision_available/SciFact.json`，包含以下类似的评估结果：
+```
+'ndcg_at_1': 0.65333,
+'ndcg_at_3': 0.7272,
+'ndcg_at_5': 0.74047,
+'ndcg_at_10': 0.7607,
+'ndcg_at_20': 0.76895,
+'ndcg_at_100': 0.78079,
+'ndcg_at_1000': 0.78594,
+```
+
+评估其在 MSMARCOTITLE 数据集上的性能:
+```
+export CUDA_VISIBLE_DEVICES=0
+python evaluation/eval_mteb.py \
+       --base_model_name_or_path BAAI/LLARA-passage \
+       --output_folder en_results/llara-passage \
+       --task_name 'MSMARCOTITLE' \
+       --eval_batch_size 8 \
+       --pooling_method last_8 \
+       --model_flag llara \
+       --add_bos_token 1 \
+       --add_eos_token 0 \
+       --max_seq_length 532
+```
+结果文件保存在`en_results/llara-passage/MSMARCOTITLE/last_8/no_model_name_available/no_revision_available/MSMARCOTITLE.json`，包含以下类似的评估结果：
+```
+"mrr_at_1": 0.29369627507163326,
+"mrr_at_3": 0.3915234001910231,
+"mrr_at_5": 0.41467526265520616,
+"mrr_at_10": 0.43047454177468664,
+"mrr_at_20": 0.4369588035569348,
+"mrr_at_100": 0.4403890327706938,
+"mrr_at_1000": 0.44061882383373324
+```
+
 评估 NV-Embed 向量检索模型（[NV-Embed-v1](https://huggingface.co/nvidia/NV-Embed-v1)）：
 ```
 export CUDA_VISIBLE_DEVICES=0
 python evaluation/eval_mteb.py \
-       --base_model_name_or_path NV-Embed-v1 \
+       --base_model_name_or_path nvidia/NV-Embed-v1 \
        --output_folder en_results/nv-embed-v1 \
        --query_instruction "Given a claim, find documents that refute the claim" \
        --task_name 'SciFact' \
@@ -205,6 +255,34 @@ python evaluation/eval_mteb.py \
 'ndcg_at_20': 0.7936,
 'ndcg_at_100': 0.80206,
 'ndcg_at_1000': 0.80444
+```
+
+评估 BGE-EN-ICL 向量检索模型（[BGE-EN-ICL](https://huggingface.co/BAAI/bge-en-icl)）：
+```
+export CUDA_VISIBLE_DEVICES=0
+python evaluation/eval_mteb.py \
+       --base_model_name_or_path BAAI/bge-en-icl \
+       --output_folder en_results/bge-en-icl \
+       --task_name SciFact \
+       --task_split "test" \
+       --query_instruction $'<instruct> Given a scientific claim, retrieve documents that support or refute the claim.\n<query>' \
+       --max_seq_length 512 \
+       --eval_batch_size 32 \
+       --dtype "float32" \
+       --pad_token unk_token \
+       --padding_side left \
+       --add_bos_token 1 \
+       --add_eos_token 1
+```
+结果文件保存在`en_results/bge-en-icl/SciFact/last/no_model_name_available/no_revision_available/SciFact.json`，包含以下类似的评估结果：
+```
+'ndcg_at_1': 0.65667,
+'ndcg_at_3': 0.72839,
+'ndcg_at_5': 0.76257,
+'ndcg_at_10': 0.77912,
+'ndcg_at_20': 0.78618,
+'ndcg_at_100': 0.79211,
+'ndcg_at_1000': 0.79459,
 ```
 
 评估 RepLLaMA 向量检索模型（[repllama-v1-7b-lora-passage](https://huggingface.co/castorini/repllama-v1-7b-lora-passage)）：
@@ -291,3 +369,7 @@ python evaluation/eval_mteb.py \
 [4] Niklas Muennighoff, Nouamane Tazi, Loic Magne, Nils Reimers: MTEB: Massive Text Embedding Benchmark. EACL 2023.
 
 [5] Chankyu Lee, Rajarshi Roy, Mengyao Xu, Jonathan Raiman, Mohammad Shoeybi, Bryan Catanzaro, Wei Ping: NV-Embed: Improved Techniques for Training LLMs as Generalist Embedding Models. arXiv 2024.
+
+[6] Zheng Liu, Chaofan Li, Shitao Xiao, Yingxia Shao, Defu Lian: Llama2Vec: Unsupervised Adaptation of Large Language Models for Dense Retrieval. ACL 2024
+
+[7] Chaofan Li, MingHao Qin, Shitao Xiao, Jianlyu Chen, Kun Luo, Yingxia Shao, Defu Lian, Zheng Liu: Making Text Embedders Few-Shot Learners. arXiv 2024
