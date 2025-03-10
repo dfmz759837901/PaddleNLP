@@ -86,6 +86,7 @@ class AutoTrainer(Trainer):
             if not param._is_initialized() and param._init_func is not None:
                 param.initialize()
         kwargs["model"] = model
+
         super().__init__(*args, **kwargs)
         assert self.args.enable_auto_parallel
 
@@ -401,7 +402,6 @@ class AutoTrainer(Trainer):
 
         model, dist_loader = self._wrap_for_auto(model, train_dataloader)
         train_dataloader = dist_loader()
-
         if resume_from_checkpoint is not None:
             self._load_from_checkpoint(resume_from_checkpoint)
 
