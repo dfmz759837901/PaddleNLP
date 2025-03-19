@@ -179,168 +179,19 @@ python -u evaluation/eval_mteb.py \
 - `add_bos_token`：是否添加起始符，0表示不添加，1表示添加
 - `add_eos_token`：是否添加结束符，0表示不添加，1表示添加
 
-## MTEB 评估
+# MTEB 评估
 [MTEB](https://github.com/embeddings-benchmark/mteb)
 是一个大规模文本嵌入评测基准，包含了丰富的向量检索评估任务和数据集。
-本仓库主要面向其中的中英文检索任务（Retrieval），并以 SciFact 数据集作为主要示例。
+本仓库主要面向其中的中英文检索任务（Retrieval），并额外支持针对 MSMARCO-Title 的评估。
 
-评估 LLARA 向量检索模型 ([LLARA-passage](https://huggingface.co/BAAI/LLARA-passage)):
-
-评估其在 SciFact 数据集上的性能:
-```
-export CUDA_VISIBLE_DEVICES=0
-python evaluation/eval_mteb.py \
-       --base_model_name_or_path BAAI/LLARA-passage \
-       --output_folder en_results/llara-passage \
-       --task_name 'SciFact' \
-       --eval_batch_size 8 \
-       --pooling_method last_8 \
-       --model_flag llara \
-       --add_bos_token 1 \
-       --add_eos_token 0 \
-       --max_seq_length 532
-```
-结果文件保存在`en_results/llara-passage/SciFact/last_8/no_model_name_available/no_revision_available/SciFact.json`，包含以下类似的评估结果：
-```
-'ndcg_at_1': 0.65333,
-'ndcg_at_3': 0.7272,
-'ndcg_at_5': 0.74047,
-'ndcg_at_10': 0.7607,
-'ndcg_at_20': 0.76895,
-'ndcg_at_100': 0.78079,
-'ndcg_at_1000': 0.78594,
-```
-
-评估其在 MSMARCOTITLE 数据集上的性能:
-```
-export CUDA_VISIBLE_DEVICES=0
-python evaluation/eval_mteb.py \
-       --base_model_name_or_path BAAI/LLARA-passage \
-       --output_folder en_results/llara-passage \
-       --task_name 'MSMARCOTITLE' \
-       --eval_batch_size 8 \
-       --pooling_method last_8 \
-       --model_flag llara \
-       --add_bos_token 1 \
-       --add_eos_token 0 \
-       --max_seq_length 532
-```
-结果文件保存在`en_results/llara-passage/MSMARCOTITLE/last_8/no_model_name_available/no_revision_available/MSMARCOTITLE.json`，包含以下类似的评估结果：
-```
-"mrr_at_1": 0.29369627507163326,
-"mrr_at_3": 0.3915234001910231,
-"mrr_at_5": 0.41467526265520616,
-"mrr_at_10": 0.43047454177468664,
-"mrr_at_20": 0.4369588035569348,
-"mrr_at_100": 0.4403890327706938,
-"mrr_at_1000": 0.44061882383373324
-```
-
-评估 NV-Embed 向量检索模型（[NV-Embed-v1](https://huggingface.co/nvidia/NV-Embed-v1)）：
-```
-export CUDA_VISIBLE_DEVICES=0
-python evaluation/eval_mteb.py \
-       --base_model_name_or_path nvidia/NV-Embed-v1 \
-       --output_folder en_results/nv-embed-v1 \
-       --query_instruction "Given a claim, find documents that refute the claim" \
-       --task_name 'SciFact' \
-       --eval_batch_size 8
-```
-结果文件保存在`en_results/nv-embed-v1/SciFact/last/no_model_name_available/no_revision_available/SciFact.json`，包含以下类似的评估结果：
-```
-'ndcg_at_1': 0.67667,
-'ndcg_at_3': 0.73826,
-'ndcg_at_5': 0.76662,
-'ndcg_at_10': 0.783,
-'ndcg_at_20': 0.7936,
-'ndcg_at_100': 0.80206,
-'ndcg_at_1000': 0.80444
-```
-
-评估 BGE-EN-ICL 向量检索模型（[BGE-EN-ICL](https://huggingface.co/BAAI/bge-en-icl)）：
-```
-export CUDA_VISIBLE_DEVICES=0
-python evaluation/eval_mteb.py \
-       --base_model_name_or_path BAAI/bge-en-icl \
-       --output_folder en_results/bge-en-icl \
-       --task_name SciFact \
-       --task_split "test" \
-       --query_instruction $'<instruct> Given a scientific claim, retrieve documents that support or refute the claim.\n<query>' \
-       --max_seq_length 512 \
-       --eval_batch_size 32 \
-       --dtype "float32" \
-       --pad_token unk_token \
-       --padding_side left \
-       --add_bos_token 1 \
-       --add_eos_token 1
-```
-结果文件保存在`en_results/bge-en-icl/SciFact/last/no_model_name_available/no_revision_available/SciFact.json`，包含以下类似的评估结果：
-```
-'ndcg_at_1': 0.65667,
-'ndcg_at_3': 0.72839,
-'ndcg_at_5': 0.76257,
-'ndcg_at_10': 0.77912,
-'ndcg_at_20': 0.78618,
-'ndcg_at_100': 0.79211,
-'ndcg_at_1000': 0.79459,
-```
-
-评估 RepLLaMA 向量检索模型（[repllama-v1-7b-lora-passage](https://huggingface.co/castorini/repllama-v1-7b-lora-passage)）：
-```
-export CUDA_VISIBLE_DEVICES=0
-python evaluation/eval_mteb.py \
-       --base_model_name_or_path castorini/repllama-v1-7b-lora-passage \
-       --output_folder en_results/repllama-v1-7b-lora-passage \
-       --task_name SciFact \
-       --task_split test \
-       --query_instruction 'query: ' \
-       --document_instruction 'passage: ' \
-       --pooling_method last \
-       --max_seq_length 512 \
-       --eval_batch_size 2 \
-       --pad_token unk_token \
-       --padding_side right \
-       --add_bos_token 0 \
-       --add_eos_token 1
-```
-结果文件保存在`en_results/repllama-v1-7b-lora-passage/SciFact/last/no_revision_available/SciFact.json`，包含以下类似的评估结果：
-```
-'ndcg_at_1': 0.63,
-'ndcg_at_3': 0.71785,
-'ndcg_at_5': 0.73735,
-'ndcg_at_10': 0.75708,
-'ndcg_at_20': 0.7664,
-'ndcg_at_100': 0.77394,
-'ndcg_at_1000': 0.7794
-```
-
-评估 BGE 向量检索模型（[bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5)）：
-```
-export CUDA_VISIBLE_DEVICES=0
-python evaluation/eval_mteb.py \
-       --base_model_name_or_path BAAI/bge-large-en-v1.5 \
-       --output_folder en_results/bge-large-en-v1.5 \
-       --task_name SciFact \
-       --task_split test \
-       --document_instruction 'Represent this sentence for searching relevant passages: ' \
-       --pooling_method mean \
-       --max_seq_length 512 \
-       --eval_batch_size 32 \
-       --pad_token pad_token \
-       --padding_side right \
-       --add_bos_token 0 \
-       --add_eos_token 0
-```
-结果文件保存在`en_results/bge-large-en-v1.5/SciFact/mean/no_revision_available/SciFact.json`，包含以下类似的评估结果：
-```
-'ndcg_at_1': 0.64667,
-'ndcg_at_3': 0.70359,
-'ndcg_at_5': 0.7265,
-'ndcg_at_10': 0.75675,
-'ndcg_at_20': 0.76743,
-'ndcg_at_100': 0.77511,
-'ndcg_at_1000': 0.77939
-```
+评估脚本为 `evaluation/eval_mteb.sh`, 支持7个模型：
+RocketQA V1,
+RocketQA V2,
+BGE([bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5)),
+RepLLaMA([repllama-v1-7b-lora-passage](https://huggingface.co/castorini/repllama-v1-7b-lora-passage)),
+NV-Embed ([NV-Embed-v1](https://huggingface.co/nvidia/NV-Embed-v1)),
+BGE-EN-ICL([BGE-EN-ICL](https://huggingface.co/BAAI/bge-en-icl)),
+LLARA ([LLARA-passage](https://huggingface.co/BAAI/LLARA-passage))
 
 可支持配置的参数：
 - `base_model_name_or_path`: 模型名称或路径
@@ -356,6 +207,33 @@ python evaluation/eval_mteb.py \
 - `padding_side`：设置 padding 的位置，可取 left 或 right
 - `add_bos_token`：是否添加起始符，0表示不添加，1表示添加
 - `add_eos_token`：是否添加结束符，0表示不添加，1表示添加
+
+
+评估结果如下：
+| Model                       | Max&nbsp;Length | ArguAna |           |        | ClimateFEVER |           |        | CQADupstackRetrieval |           |        | DBPedia |           |        |  FEVER  |           |        | FiQA2018 |           |        | HotpotQA |           |        | MSMARCO |           |        | NFCorpus |           |        |    NQ   |           |        | QuoraRetrieval |           |        | SCIDOCS |           |        | SciFact |           |        | Touche2020 |           |        | TRECCOVID |           |        |
+|-----------------------------|:----------:|:-------:|:---------:|:------:|:------------:|:---------:|:------:|:--------------------:|:---------:|:------:|:-------:|:---------:|:------:|:-------:|:---------:|:------:|:--------:|:---------:|:------:|:--------:|:---------:|:------:|:-------:|:---------:|:------:|:--------:|:---------:|:------:|:-------:|:---------:|:------:|:--------------:|:---------:|:------:|:-------:|:---------:|:------:|:-------:|:---------:|:------:|:----------:|:---------:|:------:|:---------:|:---------:|:------:|
+|                             |            | NDCG@10 | Recall@10 | MRR@10 |    NDCG@10   | Recall@10 | MRR@10 |        NDCG@10       | Recall@10 | MRR@10 | NDCG@10 | Recall@10 | MRR@10 | NDCG@10 | Recall@10 | MRR@10 |  NDCG@10 | Recall@10 | MRR@10 |  NDCG@10 | Recall@10 | MRR@10 | NDCG@10 | Recall@10 | MRR@10 |  NDCG@10 | Recall@10 | MRR@10 | NDCG@10 | Recall@10 | MRR@10 |     NDCG@10    | Recall@10 | MRR@10 | NDCG@10 | Recall@10 | MRR@10 | NDCG@10 | Recall@10 | MRR@10 |   NDCG@10  | Recall@10 | MRR@10 |  NDCG@10  | Recall@10 | MRR@10 |
+| RocketQA v1                 |    512     |  47.16  |           |        |    21.02     |           |        |        32.12         |           |        |  37.53  |           |        |  70.30  |           |        |  32.89   |           |        |  55.21   |           |        |  41.93  |           |        |  29.65   |           |        |  53.26  |           |        |     76.44      |           |        |  13.63  |           |        |  59.85  |           |        |   30.37    |           |        |   69.75   |           |        |
+| RocketQA v2                 |    512     |  44.66  |           |        |    19.15     |           |        |        29.51         |           |        |  35.75  |           |        |  69.00  |           |        |  30.34   |           |        |  53.56   |           |        |  43.59  |           |        |  29.38   |           |        |  50.16  |           |        |     74.22      |           |        |  12.82  |           |        |  55.08  |           |        |   30.60    |           |        |   68.56   |           |        |
+| bge‑large‑en‑v1.5          |    512     |  65.17  |   90.26   | 57.56  |    32.75     |   39.13   | 43.09  |        43.05         |   55.23   | 41.89  |  43.69  |   26.44   | 77.26  |  85.09  |   93.39   | 85.39  |  44.69   |   51.45   | 52.91  |  72.57   |   76.87   | 84.72  |  41.90  |   63.54   | 35.52  |  38.35   |   19.37   | 56.94  |  54.42  |   76.32   | 48.86  |     89.14      |   95.74   | 88.43  |  23.37  |   24.92   | 38.28  |  75.50  |   88.49   | 71.98  |   23.01    |   15.65   | 44.95  |   72.48   |   2.03    | 90.00  |
+| repllama‑v1‑7b‑lora‑passage |    4096    |  49.19  |   78.88   | 40.16  |    32.57     |   40.03   | 42.07  |        40.75         |   52.53   | 39.53  |  41.80  |   25.89   | 72.62  |  81.27  |   92.01   | 79.58  |  45.47   |   52.19   | 53.37  |  67.27   |   69.54   | 84.29  |  41.23  |   63.60   | 34.55  |  37.77   |   19.04   | 58.04  |  59.24  |   78.50   | 50.81  |     88.15      |   95.38   | 87.43  |  18.93  |   19.91   | 32.33  |  75.74  |   88.27   | 72.19  |   23.90    |   16.62   | 40.18  |   73.88   |   1.82    | 82.87  |
+| NV‑Embed‑v1                 |    4096    |  68.30  |   93.95   | 60.28  |    34.37     |   41.07   | 45.17  |        50.27         |   64.66   | 48.14  |  48.29  |   28.67   | 80.19  |  86.58  |   95.24   | 86.78  |  62.90   |   70.62   | 69.24  |  79.92   |   85.19   | 88.36  |  46.48  |   69.15   | 39.73  |  37.98   |   18.45   | 59.40  |  71.22  |   89.16   | 66.70  |     89.20      |   95.92   | 88.35  |  20.16  |   21.27   | 34.27  |  78.30  |   90.02   | 75.17  |   23.98    |   15.94   | 42.50  |   84.91   |   2.36    | 94.33  |
+| bge‑en‑icl (zero‑shot)      |    4096    |  82.34  |           |        |    45.33     |           |        |        47.27         |           |        |  50.60  |           |        |  91.91  |           |        |  59.13   |           |        |  84.90   |           |        |  46.78  |           |        |  40.66   |           |        |  73.85  |           |        |     91.03      |           |        |  25.46  |           |        |  77.91  |           |        |   30.71    |           |        |   76.38   |           |        |
+| LLARA-passage               |    4096    |  47.51  |   76.17   | 38.77  |    26.13     |   32.52   | 34.58  |        37.26         |   47.91   | 36.19  |  44.12  |   26.33   | 75.50  |  81.09  |   90.48   | 81.02  |  43.98   |   51.09   | 51.72  |  69.17   |   71.16   | 86.36  |  45.49  |   67.82   | 38.81  |  37.07   |   17.67   | 57.69  |  61.76  |   81.89   | 56.85  |     82.29      |   92.54   | 80.58  |  17.30  |   18.12   | 30.15  |  76.07  |   86.80   | 73.17  |   36.73    |   21.81   | 67.20  |   81.30   |   2.23    | 93.07  |
+
+
+
+| Model                       | Max Length | MSMARCO-Title |           |        |
+|-----------------------------|:----------:|:-------------:|:---------:|:------:|
+|                             |            |    NDCG@10    | Recall@10 | MRR@10 |
+| RocketQA v1                 |    512     |               |           | 36.90  |
+| RocketQA v2                 |    512     |               |           | 38.90  |
+| bge-large-en-v1.5           |    512     |     41.96     |   64.24   | 35.30  |
+| repllama-v1-7b-lora-passage |    4096    |     45.13     |   68.18   | 38.24  |
+| NV-Embed-v1                 |    4096    |     45.21     |   68.02   | 38.39  |
+| bge-en-icl (zero-shot)      |    4096    |               |           | 42.77  |
+| LLARA-passage               |    4096    |     49.87     |   72.59   | 43.04  |
+
 
 
 ## Reference
